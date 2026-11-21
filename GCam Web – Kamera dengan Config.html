@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GCam Web – Kamera dengan Config</title>
+<style>
+:root{--bg:#0e1013;--panel:#171a1f;--line:#2a2f37;--tx:#eef1f5;--mut:#8b94a1;--ac:#7fb4ff;--rec:#ff5a5a;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--tx);font:15px/1.4 "Google Sans","Segoe UI",system-ui,sans-serif;overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.top{display:flex;justify-content:space-between;align-items:center;padding:10px 14px}
+.top .grp{display:flex;gap:6px}
+.chip{padding:7px 12px;border-radius:20px;background:var(--panel);color:var(--mut);font-size:13px}
+.chip.on{color:var(--bg);background:var(--ac)}
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 8px}
+.view{position:relative;max-width:100%;max-height:100%;width:100%;overflow:hidden;border-radius:18px;background:#000;aspect-ratio:3/4}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .15s}
+.vig,.grid{position:absolute;inset:0;pointer-events:none}
+.grid{display:none;background:linear-gradient(#fff4 1px,#0000 1px) 0 33.3%/100% 33.4%,linear-gradient(90deg,#fff4 1px,#0000 1px) 33.3% 0/33.4% 100%}
+.grid.on{display:block}
+.count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:96px;font-weight:300;text-shadow:0 2px 12px #000a}
+.hud{position:absolute;left:12px;bottom:10px;font-size:12px;color:#fffc;text-shadow:0 1px 4px #000}
+.rec{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:none;background:#000a;padding:4px 10px;border-radius:12px;font-size:13px}
+.rec::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--rec);margin-right:6px}
+.zoom{display:flex;justify-content:center;gap:6px;padding:10px 0 2px}
+.zoom button{width:38px;height:38px;border-radius:50%;background:var(--panel);color:var(--mut);font-size:13px}
+.zoom button.on{color:var(--ac);border:1px solid var(--ac)}
+.modes{display:flex;justify-content:center;gap:22px;padding:8px 0;color:var(--mut)}
+.modes button{padding:4px 2px;border-bottom:2px solid transparent}
+.modes button.on{color:var(--tx);border-color:var(--ac)}
+.bar{display:flex;align-items:center;justify-content:space-around;padding:6px 20px 16px}
+.thumb{width:52px;height:52px;border-radius:12px;background:var(--panel) center/cover;border:1px solid var(--line)}
+.shutter{width:74px;height:74px;border-radius:50%;border:4px solid var(--tx);display:grid;place-items:center}
+.shutter i{width:56px;height:56px;border-radius:50%;background:var(--tx);transition:.15s}
+.shutter:active i{transform:scale(.9)}
+.shutter.vid i{background:var(--rec)}
+.shutter.recing i{border-radius:10px;transform:scale(.55)}
+.flip{width:52px;height:52px;border-radius:50%;background:var(--panel);font-size:22px}
+.sheet{position:fixed;inset:auto 0 0 0;max-height:82%;overflow:auto;background:var(--panel);border-radius:22px 22px 0 0;padding:16px 18px calc(18px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .25s;z-index:5;border-top:1px solid var(--line)}
+.sheet.open{transform:none}
+.sheet h2{font-size:17px;font-weight:600;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.row{display:grid;grid-template-columns:96px 1fr 38px;gap:8px;align-items:center;padding:5px 0;font-size:14px}
+.row output{text-align:right;color:var(--mut);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--ac)}
+select,textarea{width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:8px;font:13px ui-monospace,Menlo,monospace}
+select{font-family:inherit;font-size:14px}
+textarea{height:130px;resize:vertical;margin-top:8px}
+.sel{display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;padding:5px 0;font-size:14px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{padding:9px 14px;border-radius:12px;background:var(--bg);border:1px solid var(--line);font-size:14px}
+.btn.pri{background:var(--ac);color:var(--bg);border-color:var(--ac);font-weight:600}
+.sub{color:var(--mut);font-size:12.5px;margin:12px 0 2px}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 60px);transform:translateX(-50%);background:#000c;padding:8px 14px;border-radius:14px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
+.toast.on{opacity:1}
+.viewer{position:fixed;inset:0;background:#000;z-index:8;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
+.viewer img,.viewer video{max-width:100%;max-height:78%;border-radius:12px}
+.deny{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--mut)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <div class="grp">
+      <button class="chip" id="bHdr">HDR+</button>
+      <button class="chip" id="bGrid">Grid</button>
+      <button class="chip" id="bTimer">Timer mati</button>
+    </div>
+    <button class="chip" id="bCfg">⚙ Config</button>
+  </div>
+
+  <div class="stage">
+    <div class="view" id="view">
+      <video id="vid" autoplay playsinline muted></video>
+      <div class="vig" id="vig"></div>
+      <div class="grid" id="grid"></div>
+      <div class="count" id="count"></div>
+      <div class="rec" id="rec">00:00</div>
+      <div class="hud" id="hud"></div>
+      <div class="deny" id="deny">Kamera tidak bisa dibuka. Izinkan akses kamera di browser, lalu muat ulang halaman.</div>
+    </div>
+  </div>
+
+  <div class="zoom" id="zoom">
+    <button data-z="1" class="on">1×</button><button data-z="2">2×</button><button data-z="3">3×</button>
+  </div>
+  <div class="modes" id="modes">
+    <button data-m="foto" class="on">Foto</button><button data-m="malam">Malam</button><button data-m="video">Video</button>
+  </div>
+  <div class="bar">
+    <button class="thumb" id="thumb" aria-label="Buka hasil terakhir"></button>
+    <button class="shutter" id="shutter" aria-label="Ambil"><i></i></button>
+    <button class="flip" id="flip" aria-label="Ganti kamera">⟲</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" role="dialog" aria-label="Config">
+  <h2>Config kamera <button class="chip" id="bClose">Tutup</button></h2>
+  <div class="sel"><label for="preset">Preset</label><select id="preset"></select></div>
+  <div id="sliders"></div>
+  <div class="sel"><label for="aspect">Rasio</label><select id="aspect"><option>4:3</option><option>16:9</option><option>1:1</option><option>3:4</option><option>9:16</option></select></div>
+  <div class="sel"><label for="res">Resolusi</label><select id="res"><option value="720">HD 720p</option><option value="1080">Full HD 1080p</option><option value="2160">4K 2160p</option></select></div>
+  <div class="sel"><label for="mirror">Cermin</label><select id="mirror"><option value="0">Mati</option><option value="1">Hidup</option></select></div>
+  <p class="sub">Import / export config (JSON atau XML gaya GCam)</p>
+  <textarea id="cfgText" spellcheck="false" placeholder='{"name":"Config saya","exposure":10,"contrast":15,"saturation":20}'></textarea>
+  <div class="btns">
+    <button class="btn pri" id="bApply">Terapkan teks</button>
+    <button class="btn" id="bExport">Salin config saat ini</button>
+    <button class="btn" id="bFile">Pilih file…</button>
+    <button class="btn" id="bReset">Reset</button>
+  </div>
+  <input type="file" id="file" accept=".json,.xml,.txt,.cfg" hidden>
+</div>
+
+<div class="viewer" id="viewer"><div id="vcontent"></div><span class="sub">Tekan lama gambar untuk menyimpan</span><button class="btn pri" id="vclose">Tutup</button></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const DEF={name:"Standar",exposure:0,contrast:0,saturation:0,warmth:0,vignette:0,sharpness:0,hdr:false,grid:false,timer:0,mirror:false,aspect:"4:3",res:"1080",quality:92};
+const PRESETS={
+ "Standar":{},
+ "Pixel hangat":{exposure:6,contrast:14,saturation:18,warmth:22,vignette:12,hdr:true},
+ "Sinematik":{exposure:-8,contrast:28,saturation:-12,warmth:-14,vignette:38,aspect:"16:9"},
+ "Mode malam":{exposure:34,contrast:10,saturation:8,warmth:6,hdr:true},
+ "Hitam putih":{contrast:30,saturation:-100,vignette:20}
+};
+const SL=[["exposure","Eksposur",-60,60],["contrast","Kontras",-50,60],["saturation","Saturasi",-100,100],["warmth","Suhu warna",-60,60],["vignette","Vinyet",0,80],["sharpness","Ketajaman",0,100]];
+let cfg={...DEF},stream=null,facing="environment",zoom=1,mode="foto",rec=null,chunks=[],recT=null,busy=false;
+
+/* ---------- config ---------- */
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+function filterStr(){
+  const h=cfg.hdr?1:0,m=mode==="malam"?1:0;
+  const b=1+(cfg.exposure+m*30)/100, c=1+(cfg.contrast+h*10)/100, s=1+(cfg.saturation+h*8)/100;
+  const w=cfg.warmth;
+  return `brightness(${b.toFixed(3)}) contrast(${c.toFixed(3)}) saturate(${Math.max(0,s).toFixed(3)})`+
+    (w>0?` sepia(${(w/200).toFixed(3)})`:w<0?` hue-rotate(${(w*0.35).toFixed(1)}deg)`:"");
+}
+function render(){
+  $("vid").style.filter=filterStr();
+  $("vid").style.transform=`scale(${zoom})${cfg.mirror?" scaleX(-1)":""}`;
+  $("vig").style.background=`radial-gradient(ellipse at center,#0000 ${100-cfg.vignette*0.9}%,#000${Math.round(cfg.vignette*2.2).toString(16).padStart(2,"0").slice(-2)} 130%)`;
+  $("grid").classList.toggle("on",cfg.grid);
+  $("bHdr").classList.toggle("on",cfg.hdr);
+  $("bGrid").classList.toggle("on",cfg.grid);
+  $("bTimer").textContent=cfg.timer?`Timer ${cfg.timer}d`:"Timer mati";
+  $("bTimer").classList.toggle("on",!!cfg.timer);
+  $("view").style.aspectRatio=cfg.aspect.replace(":","/");
+  $("aspect").value=cfg.aspect;$("res").value=cfg.res;$("mirror").value=cfg.mirror?"1":"0";
+  SL.forEach(([k])=>{$("s_"+k).value=cfg[k];$("o_"+k).textContent=cfg[k]});
+  $("hud").textContent=cfg.name+" · "+cfg.res+"p";
+}
+function setCfg(p,keep){
+  const prev=cfg;cfg={...(keep?prev:DEF),...p};
+  SL.forEach(([k,,a,b])=>cfg[k]=clamp(+cfg[k]||0,a,b));
+  cfg.timer=[0,3,10].includes(+cfg.timer)?+cfg.timer:0;
+  cfg.hdr=!!cfg.hdr;cfg.grid=!!cfg.grid;cfg.mirror=!!cfg.mirror;
+  if(!["4:3","16:9","1:1","3:4","9:16"].includes(cfg.aspect))cfg.aspect="4:3";
+  if(!["720","1080","2160"].includes(String(cfg.res)))cfg.res="1080";cfg.res=String(cfg.res);
+  render();
+  if(prev.res!==cfg.res)startCam();
+}
+const ALIAS={exposure:["exposure","ev","brightness"],contrast:["contrast"],saturation:["saturation","sat"],warmth:["warmth","temperature","temp","wb"],vignette:["vignette","vignetting"],sharpness:["sharpness","sharpen"],hdr:["hdr","hdrplus","hdr_plus"],grid:["grid"],timer:["timer"],mirror:["mirror"],aspect:["aspect","ratio"],res:["res","resolution"],name:["name","title","config_name"]};
+function normalize(obj){
+  const out={};const low={};
+  Object.keys(obj).forEach(k=>low[k.toLowerCase().replace(/[\s-]/g,"_")]=obj[k]);
+  for(const k in ALIAS)for(const a of ALIAS[k]){if(a in low){out[k]=low[a];break}}
+  for(const k of["hdr","grid","mirror"])if(k in out)out[k]=/^(true|1|on|yes)$/i.test(String(out[k]));
+  for(const k of["exposure","contrast","saturation","warmth","vignette","sharpness","timer"])if(k in out)out[k]=parseFloat(out[k])||0;
+  if("res"in out)out.res=String(out.res).replace(/\D/g,"");
+  return out;
+}
+function parseConfig(txt){
+  txt=txt.trim();if(!txt)throw Error("Teks config kosong");
+  if(txt[0]==="{"){return normalize(JSON.parse(txt))}
+  if(txt[0]==="<"){
+    const d=new DOMParser().parseFromString(txt,"text/xml");
+    if(d.querySelector("parsererror"))throw Error("XML tidak valid");
+    const o={};
+    d.querySelectorAll("*").forEach(e=>{const n=e.getAttribute("name");if(n){const v=e.getAttribute("value");o[n]=v!==null?v:e.textContent.trim()}});
+    if(!Object.keys(o).length)throw Error("Tidak ada parameter di XML");
+    return normalize(o);
+  }
+  const o={};txt.split(/\n/).forEach(l=>{const m=l.match(/^\s*([\w.\-]+)\s*[=:]\s*(.+?)\s*$/);if(m)o[m[1]]=m[2]});
+  if(!Object.keys(o).length)throw Error("Format tidak dikenali");
+  return normalize(o);
+}
+function applyText(t){
+  try{const p=parseConfig(t);setCfg(p);toast("Config diterapkan: "+cfg.name)}
+  catch(e){toast("Gagal: "+e.message)}
+}
+
+/* ---------- UI build ---------- */
+$("sliders").innerHTML=SL.map(([k,l,a,b])=>`<div class="row"><label for="s_${k}">${l}</label><input type="range" id="s_${k}" min="${a}" max="${b}" step="1" value="0"><output id="o_${k}">0</output></div>`).join("");
+$("preset").innerHTML=Object.keys(PRESETS).map(n=>`<option>${n}</option>`).join("");
+SL.forEach(([k])=>$("s_"+k).oninput=e=>{cfg[k]=+e.target.value;cfg.name="Kustom";render()});
+$("preset").onchange=e=>setCfg({name:e.target.value,...PRESETS[e.target.value]});
+$("aspect").onchange=e=>{cfg.aspect=e.target.value;render()};
+$("res").onchange=e=>{cfg.res=e.target.value;render();startCam()};
+$("mirror").onchange=e=>{cfg.mirror=e.target.value==="1";render()};
+$("bHdr").onclick=()=>{cfg.hdr=!cfg.hdr;render()};
+$("bGrid").onclick=()=>{cfg.grid=!cfg.grid;render()};
+$("bTimer").onclick=()=>{cfg.timer=cfg.timer===0?3:cfg.timer===3?10:0;render()};
+$("bCfg").onclick=()=>{$("cfgText").value=JSON.stringify(cfg,null,1);$("sheet").classList.add("open")};
+$("bClose").onclick=()=>$("sheet").classList.remove("open");
+$("bApply").onclick=()=>applyText($("cfgText").value);
+$("bReset").onclick=()=>{setCfg({});toast("Config direset")};
+$("bExport").onclick=async()=>{
+  const t=JSON.stringify(cfg,null,1);$("cfgText").value=t;
+  try{await navigator.clipboard.writeText(t);toast("Config disalin")}
+  catch{$("cfgText").select();toast("Teks dipilih, salin manual")}
+};
+$("bFile").onclick=()=>$("file").click();
+$("file").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$("cfgText").value=r.result;applyText(r.result)};r.readAsText(f);e.target.value=""};
+$("zoom").onclick=e=>{const z=e.target.dataset.z;if(!z)return;zoom=+z;[...$("zoom").children].forEach(b=>b.classList.toggle("on",b===e.target));render()};
+$("modes").onclick=e=>{const m=e.target.dataset.m;if(!m)return;mode=m;[...$("modes").children].forEach(b=>b.classList.toggle("on",b===e.target));$("shutter").classList.toggle("vid",m==="video");render()};
+$("flip").onclick=()=>{facing=facing==="user"?"environment":"user";startCam()};
+let tt;function toast(t){const e=$("toast");e.textContent=t;e.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>e.classList.remove("on"),2200)}
+
+/* ---------- camera ---------- */
+async function startCam(){
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  const h={720:720,1080:1080,2160:2160}[cfg.res];
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,height:{ideal:h},width:{ideal:h*16/9}},audio:false});
+    $("vid").srcObject=stream;$("deny").style.display="none";
+  }catch(e){$("deny").style.display="flex"}
+}
+
+/* ---------- capture ---------- */
+function snap(){
+  const v=$("vid"),vw=v.videoWidth,vh=v.videoHeight;if(!vw)return toast("Kamera belum siap");
+  const [aw,ah]=cfg.aspect.split(":").map(Number),r=aw/ah;
+  let sw=vw,sh=vw/r;if(sh>vh){sh=vh;sw=vh*r}
+  sw/=zoom;sh/=zoom;
+  const sx=(vw-sw)/2,sy=(vh-sh)/2;
+  const c=document.createElement("canvas");c.width=Math.round(sw);c.height=Math.round(sh);
+  const x=c.getContext("2d");
+  if(cfg.mirror){x.translate(c.width,0);x.scale(-1,1)}
+  x.filter=filterStr();x.drawImage(v,sx,sy,sw,sh,0,0,c.width,c.height);
+  x.setTransform(1,0,0,1,0,0);x.filter="none";
+  if(cfg.vignette>0){
+    const g=x.createRadialGradient(c.width/2,c.height/2,Math.min(c.width,c.height)*(0.5-cfg.vignette/220),c.width/2,c.height/2,Math.hypot(c.width,c.height)/2);
+    g.addColorStop(0,"rgba(0,0,0,0)");g.addColorStop(1,`rgba(0,0,0,${cfg.vignette/100*0.85})`);
+    x.fillStyle=g;x.fillRect(0,0,c.width,c.height);
+  }
+  if(cfg.sharpness>0){
+    const s=cfg.sharpness/100*0.6,d=x.getImageData(0,0,c.width,c.height),o=new Uint8ClampedArray(d.data),W=c.width,H=c.height;
+    for(let y=1;y<H-1;y++)for(let i=1;i<W-1;i++){const p=(y*W+i)*4;for(let k=0;k<3;k++){const q=p+k;d.data[q]=clamp(o[q]*(1+4*s)-s*(o[q-4]+o[q+4]+o[q-W*4]+o[q+W*4]),0,255)}}
+    x.putImageData(d,0,0);
+  }
+  c.toBlob(b=>{show(URL.createObjectURL(b),"img");$("thumb").style.backgroundImage=`url(${last.url})`},"image/jpeg",cfg.quality/100);
+  const f=document.createElement("div");f.style.cssText="position:absolute;inset:0;background:#fff;opacity:.8;transition:opacity .25s";$("view").append(f);requestAnimationFrame(()=>f.style.opacity=0);setTimeout(()=>f.remove(),300);
+}
+let last={};
+function show(url,type){last={url,type}}
+$("thumb").onclick=()=>{
+  if(!last.url)return toast("Belum ada hasil");
+  $("vcontent").innerHTML=last.type==="img"?`<img src="${last.url}" alt="Foto">`:`<video src="${last.url}" controls playsinline></video>`;
+  $("viewer").style.display="flex";
+};
+$("vclose").onclick=()=>{$("viewer").style.display="none";$("vcontent").innerHTML=""};
+
+async function countdown(){
+  if(!cfg.timer)return;
+  const c=$("count");c.style.display="flex";
+  for(let i=cfg.timer;i>0;i--){c.textContent=i;await new Promise(r=>setTimeout(r,1000))}
+  c.style.display="none";
+}
+$("shutter").onclick=async()=>{
+  if(busy&&!rec)return;
+  if(mode==="video"){
+    if(rec){rec.stop();return}
+    busy=true;await countdown();
+    chunks=[];
+    try{rec=new MediaRecorder(stream)}catch{busy=false;return toast("Perekaman tidak didukung")}
+    rec.ondataavailable=e=>chunks.push(e.data);
+    rec.onstop=()=>{
+      clearInterval(recT);$("rec").style.display="none";$("shutter").classList.remove("recing");
+      const b=new Blob(chunks,{type:rec.mimeType});rec=null;busy=false;
+      show(URL.createObjectURL(b),"vid");$("thumb").style.backgroundImage="none";$("thumb").textContent="▶";
+      toast("Video tersimpan di thumbnail");
+    };
+    rec.start();let s=0;$("rec").style.display="block";$("rec").textContent="00:00";
+    recT=setInterval(()=>{s++;$("rec").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")},1000);
+    $("shutter").classList.add("recing");
+    return;
+  }
+  busy=true;await countdown();snap();busy=false;
+};
+
+setCfg({});startCam();
+</script>
+</body>
+</html>
